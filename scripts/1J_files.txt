@@ -1,0 +1,3 @@
+/hdfs/store/user/jnatoli/WJetsTo3PiGenProduction/hadded/HIG-WJetsTo3Pi_1J-RunIISummer20UL16NanoAODv9_MORE_part1.root
+/hdfs/store/user/jnatoli/WJetsTo3PiGenProduction/hadded/HIG-WJetsTo3Pi_1J-RunIISummer20UL16NanoAODv9_MORE_part2.root
+/hdfs/store/user/jnatoli/WJetsTo3PiGenProduction/hadded/HIG-WJetsTo3Pi_1J-RunIISummer20UL16NanoAODv9_MORE_part3.root

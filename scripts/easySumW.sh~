@@ -1,0 +1,24 @@
+#!/bin/bash
+# quick script to help with getting nEvts
+#
+# first, write the files you want to check to a .txt file
+#
+
+INPATH=${1}
+NAME=${2}
+
+OUTFILE=${NAME}_files.txt
+
+if [ ! -d ${INPATH} ]; then
+    echo "${INPATH} does not exist!!! Exiting..."
+    exit 1
+fi
+
+ls ${INPATH} > ${OUTFILE}
+numFiles=$(wc -l ${OUTFILE})
+echo "Counting events in ${numFiles} files"
+
+# Now compile and run
+g++ ${RCOMP} getSumW.C -o getsumw || { echo "Compilation failed!"; exit 1; }
+./getsumw ${OUTFILE} ${INPATH} ${NAME}
+rm getsumw

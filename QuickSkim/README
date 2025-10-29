@@ -1,0 +1,13 @@
+These scripts allow you to do a quick skim of ntuples. The actual skimming is done in "skimOver.C", where you should add in your various skimming cuts. This file writes a new ROOT file called "small.root", which you will need to move to the appropriate directory. This file is outputted in the currect directory, so while it should be small, be careful if you are very close to your disk quota.
+
+1) Single Skim Using Interactive ROOT
+You can skim ntuples one at a time by attaching a ROOT file to your session and performing these actions
+>> root -l <file_to_skim.root>
+>> Events->MakeClass("skim")
+>> .L skimOver.C
+>> skim s
+>> s.Loop()
+
+Now you can exit the ROOT session and move "small.root" wherever you want
+
+2) Many NTuples w/ Script

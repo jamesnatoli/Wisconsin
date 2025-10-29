@@ -1,0 +1,50 @@
+#!/bin/bash
+# quick script to help with getting nEvts
+
+INYEAR=${1}
+NJETS=${2}
+prefix="/hdfs/store/user/jnatoli/WJetsTo3PiGenProduction/";
+
+if [[ ${INYEAR} == 2022 ]]; then
+    YEAR=RunIISummer20UL16APV
+    enddir=RunIISummer20UL16NanoAODv9-106X_mcRun2_asymptotic_v17-v2
+    echo ">>> Counting events in ${YEAR}"
+elif [[ ${INYEAR} == 2022EE ]]; then
+    YEAR=RunIISummer20UL16
+    enddir=RunIISummer20UL16NanoAODv9-106X_mcRun2_asymptotic_v17-v2
+    echo ">>> Counting events in ${YEAR}"
+elif [[ ${INYEAR} == 2023 ]]; then
+    YEAR=RunIISummer20UL17
+    enddir=RunIISummer20UL17NanoAODv9-106X_mc2017_realistic_v9-v2
+    echo ">>> Counting events in ${YEAR}"
+elif [[ ${INYEAR} == 2023BPix ]]; then
+    YEAR=RunIISummer20UL18
+    enddir=RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v2
+    echo ">>> Counting events in ${YEAR}"
+else
+    echo ">>> Invalid year ${YEAR} provided, exiting..."
+    echo ">>> Please choose from: 2022, 2022EE, 2023, 2023BPix
+    exit 1
+fi
+
+# Make me not dumb
+if [[ ${NJETS} == 0J || ${NJETS} == 1J || ${NJETS} == 2J || ${NJETS} == 012J ]]; then
+    echo "Using nJets: ${NJETS}"
+else
+    echo "!!!ERROR!!! Not an acceptable number of jets!"
+    exit 1
+fi
+
+enddir=/${enddir}/NANOAODSIM/
+OUTFILE=${INYEAR}_${NJETS}_files.txt
+# Put together file names
+jetdir="HIG-WJetsTo3Pi_${NJETS}-${YEAR}"
+ls ${prefix}${jetdir}${enddir} > ${OUTFILE}
+# ls /hdfs/store/user/jnatoli/WJetsTo3PiGenProduction/hadded/*_${NJETS}-* > ${NJETS}_files.txt
+numFiles=$(wc -l ${OUTFILE})
+echo "Counting events in ${numFiles} files"
+
+# Now compile and run
+g++ ${RCOMP} getSumW.C -o getsumw || { echo "Compilation failed!"; exit 1; }
+./getsumw ${OUTFILE} ${prefix}${jetdir}${enddir} ${NJETS}
+rm getsumw

@@ -1,0 +1,15 @@
+#include "ROOT/RDataFrame.hxx"
+#include <ROOT/RDFHelpers.hxx>
+#include "TStopwatch.h"
+
+#include <string>
+#include <vector>
+#include <map>
+
+int main() {
+  ROOT::EnableImplicitMT();
+  ROOT::RDataFrame rdf("Events", "/hdfs/store/user/jnatoli/NanoTauAnalysis/analysis/Wto3pi_2018_fromstep1/Wto3pi/*GEN*.root");
+  auto rdf_trig = rdf.Filter("Trigger_ditau");
+  ROOT::RDF::Experimental::AddProgressBar(rdf_trig);
+  rdf_trig.Snapshot("Events", "/hdfs/store/user/jnatoli/NanoTauAnalysis/analysis/Wto3pi_2018_fromstep1/Wto3pi/SignalWJetsTo3Pi_PlusAndMinus_Wto3pi_2018_GEN_TriggerDitau.root");
+}

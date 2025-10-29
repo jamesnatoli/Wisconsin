@@ -1,0 +1,176 @@
+// macro to getSumW from a TChain
+#include <TChain.h>
+#include <TFile.h>
+#include <iostream>
+#include <fstream>
+#include <iomanip>
+#include <chrono>
+
+void progressBar( Long64_t ientry, Long64_t nentries, std::chrono::time_point<std::chrono::high_resolution_clock> start) {
+  Int_t barWidth = 50;
+  if (((ientry % ((int)(nentries / barWidth))) == 0) && (nentries > 0)) {
+    std::cout << "[";
+    float progress = (float)ientry / nentries;
+    int pos = barWidth * progress;
+    for (int b = 0; b < barWidth; ++b) {
+      if (b < pos) std::cout << "=";
+      else if (b == pos) std::cout << ">";
+      else std::cout << " ";
+    }
+    std::cout << "] "; 
+    if (progress != 0) {
+      auto checkpoint = std::chrono::high_resolution_clock::now();
+      auto duration = std::chrono::duration_cast<std::chrono::seconds>(checkpoint - start);
+      std::cout << std::setw(5) << (100 * round(progress * 100) / 100) << "%" << ", ETA: " 
+		<< std::setw(15) << round((std::chrono::duration<float>(duration).count() / (progress)) - (std::chrono::duration<float>(duration).count()))
+		<< " seconds";
+    } else
+      std::cout << "Getting time estimate...";
+    std::cout << "\r";
+    std::cout.flush();
+  }
+  return;
+}
+
+void getTime( void (*fcn_ptr)(TChain*), TChain* c) {
+  auto start = std::chrono::high_resolution_clock::now();
+  fcn_ptr( c);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+  std::cout << ">>> Finished in " << duration.count() << " seconds" << std::endl;
+}
+
+void CalculateSumOfWeights( TChain *events) {
+  std::cout << "Getting sum of GenWeights" << std::endl;
+  Float_t genw          = 0;
+  UChar_t lhe_njets     = 0;
+  events->SetBranchAddress( "Generator_weight", &genw);
+  events->SetBranchAddress( "LHE_Njets", &lhe_njets);
+  std::vector<Double_t> SumOfWeights = { 0, 0, 0, 0, 0};
+
+  Long64_t nentries = events->GetEntriesFast();
+  std::cout << "Looping over " << nentries << " entries" << std::endl;
+  auto start = std::chrono::high_resolution_clock::now();
+  for (Long64_t i = 0; i < nentries; ++i) {
+    progressBar( i, nentries, start);
+    
+    events->GetEntry(i);
+    SumOfWeights[4] += genw;
+    if ( (Int_t)lhe_njets == 0) 
+      SumOfWeights[0] += genw;
+    else if ( (Int_t)lhe_njets == 1) 
+      SumOfWeights[1] += genw;
+    else if ( (Int_t)lhe_njets == 2) 
+      SumOfWeights[2] += genw;
+    else if ( (Int_t)lhe_njets == 3) 
+      SumOfWeights[3] += genw;
+    else
+      std::cout << "Danger, Tim Robinson" << std::endl;
+  }
+
+  std::cout << "\n" << std::endl;
+  for (int i = 0; i < SumOfWeights.size()-1; ++i)
+    std::cout << std::fixed << "SumOfWeights (" << i << "J): " << SumOfWeights[i] << std::endl;
+  std::cout << std::fixed << "SumOfWeights (Total): " << SumOfWeights[4] << std::endl;
+
+  std::cout << std::scientific;
+}
+
+void getSumW(std::string infname, std::string prefix, std::string njets) {
+
+  // std::string prefix = "/hdfs/store/user/jnatoli/WJetsTo3PiGenProduction/";
+  // std::string jetdir = "HIG-WJetsTo3Pi_" + njets + "-RunIISummer20UL16/";
+  // std::string enddir = "RunIISummer20UL16NanoAODv9-106X_mcRun2_asymptotic_v17-v2/NANOAODSIM/";
+
+  bool getEvents = true;
+  bool getSumw   = false;
+  bool hadded    = false;
+  int counter = 0;
+  std::string seed;
+  std::string fname;
+  std::ifstream file( infname);
+  std::vector<std::string> uniqueSeeds = {};
+  std::vector<std::string> uniqueFiles = {};
+  std::vector<std::string> duplicateFiles = {};
+  TChain* events = new TChain("Events");
+  
+  if (file.is_open()) {
+    while (std::getline( file, fname)  && (counter > -100)) {
+      counter++;
+      if ( fname.find("hadd") == std::string::npos) {
+	
+	std::string mini;
+	if ( fname.find("NanoAODv9-999999") != std::string::npos)
+	  mini = fname.substr( fname.find( "999999_") + 7);
+	else
+	  mini = fname.substr( fname.find( "NanoAODv9_") + 10);
+	seed = mini.substr( 0, mini.find("_"));
+	if (std::find( uniqueSeeds.begin(), uniqueSeeds.end(), seed) != uniqueSeeds.end()) {
+	  std::cout << "DUPLICATE SEED: " << seed << std::endl;
+	  duplicateFiles.push_back( fname);
+	  continue;
+	}
+	// events->Add((prefix + jetdir + enddir + fname).c_str());
+	events->Add((prefix + fname).c_str());
+      } else {
+	hadded = true;
+	events->Add((fname).c_str());
+      }
+      uniqueSeeds.push_back( seed);
+      uniqueFiles.push_back( fname);
+    }
+  }
+
+  // Get highest seed
+  int highestSeed = 0;
+  for (auto seed : uniqueSeeds){
+    if (stoi(seed) > highestSeed)
+      highestSeed = stoi(seed);
+  }
+  
+  if (hadded)
+    std::cout << "Using hadded files I see... " << std::endl;
+  std::cout << std::setw(15) << "Files Checked:   " << counter << std::endl;
+  std::cout << std::setw(15) << "Unique Seeds:    " << uniqueSeeds.size() << std::endl;
+  std::cout << std::setw(15) << "Duplicate Seeds: " << duplicateFiles.size() << std::endl;
+  std::cout << std::setw(15) << "Highest Seed: " << highestSeed << std::endl;
+  
+  // Sanity Check #1
+  if (uniqueSeeds.size() + duplicateFiles.size() != counter)
+    std::cout << "Something's not adding up..." << std::endl;
+  
+  // Sanity Check #2
+  if (duplicateFiles.size() > 0) {
+    std::cout << "There are duplicate files... writing to: " << "DUPLICATE_" << njets << "_files.txt" << std::endl;
+    std::cout << "Will not count events..." << std::endl;
+    std::ofstream outfile(("DUPLICATE_" + njets + "_files.txt").c_str());
+    for (int i = 0; i < duplicateFiles.size(); ++i) {
+      if (std::find( uniqueFiles.begin(), uniqueFiles.end(), duplicateFiles[i]) != uniqueFiles.end())
+	std::cout << "Danger, Tim Robinson!" << std::endl;
+      else
+	outfile << duplicateFiles[i] << std::endl;
+    }
+    getEvents = false;
+    std::cout << "closing file..." << std::endl;
+    outfile.close();
+  } else {
+    std::cout << "Getting nEvents... this could take a few minutes" << std::endl;
+    Long64_t nevts = events->GetEntries();
+    std::cout << "nEvents: " << nevts << std::endl;
+  }
+
+  if (getEvents) {
+    getTime( &CalculateSumOfWeights, events);
+  }
+
+  std::cout << "All Done :) " << std::endl;
+  return;
+}
+
+int main(int argc, char** argv) {
+  if (argc !=4)
+    std::cout << "You need to provide a file, a year, and # of jets..." << std::endl;
+  else 
+    getSumW( argv[1], argv[2], argv[3]);
+  return 0;
+}
